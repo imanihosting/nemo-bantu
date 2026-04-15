@@ -1,0 +1,129 @@
+# HiFi-GAN vocoder training config for Shona TTS
+# Adapted from NeMo examples/tts/conf/hifigan/hifigan.yaml
+# Self-contained (no nested defaults) for standalone use
+
+name: HifiGan_Shona
+
+train_dataset: data/manifests/shona_train_manifest.jsonl
+validation_datasets: data/manifests/shona_train_manifest.jsonl
+
+sample_rate: 22050
+n_mel_channels: 80
+n_window_size: 1024
+n_window_stride: 256
+n_fft: 1024
+lowfreq: 0
+highfreq: 8000
+window: hann
+
+train_n_segments: 8192
+train_max_duration: null
+train_min_duration: 0.75
+
+val_n_segments: 66048
+val_max_duration: null
+val_min_duration: 3
+
+model:
+  preprocessor:
+    _target_: nemo.collections.asr.parts.preprocessing.features.FilterbankFeatures
+    nfilt: ${n_mel_channels}
+    lowfreq: ${lowfreq}
+    highfreq: ${highfreq}
+    n_fft: ${n_fft}
+    n_window_size: ${n_window_size}
+    n_window_stride: ${n_window_stride}
+    pad_to: 0
+    pad_value: -11.52
+    sample_rate: ${sample_rate}
+    window: ${window}
+    normalize: null
+    preemph: null
+    dither: 0.0
+    frame_splicing: 1
+    log: true
+    log_zero_guard_type: clamp
+    log_zero_guard_value: 1e-05
+    mag_power: 1.0
+    use_grads: false
+    exact_pad: true
+
+  generator:
+    _target_: nemo.collections.tts.modules.hifigan_modules.Generator
+    in_channels: ${n_mel_channels}
+    out_channels: 1
+    resblock: 1
+    resblock_kernel_sizes: [3, 7, 11]
+    resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+    upsample_rates: [8, 8, 2, 2]
+    upsample_initial_channel: 512
+    upsample_kernel_sizes: [16, 16, 4, 4]
+
+  train_ds:
+    dataset:
+      _target_: nemo.collections.tts.data.vocoder_dataset.VocoderDataset
+      manifest_filepath: ${train_dataset}
+      sample_rate: ${sample_rate}
+      n_segments: ${train_n_segments}
+      max_duration: ${train_max_duration}
+      min_duration: ${train_min_duration}
+
+    dataloader_params:
+      drop_last: true
+      shuffle: true
+      batch_size: 16
+      num_workers: 4
+
+  validation_ds:
+    dataset:
+      _target_: nemo.collections.tts.data.vocoder_dataset.VocoderDataset
+      manifest_filepath: ${validation_datasets}
+      sample_rate: ${sample_rate}
+      n_segments: ${val_n_segments}
+      max_duration: ${val_max_duration}
+      min_duration: ${val_min_duration}
+
+    dataloader_params:
+      drop_last: false
+      shuffle: false
+      batch_size: 4
+      num_workers: 2
+
+  optim:
+    _target_: torch.optim.AdamW
+    lr: 0.0002
+    betas: [0.8, 0.99]
+
+    sched:
+      name: CosineAnnealing
+      min_lr: 1e-5
+      warmup_ratio: 0.02
+
+  max_steps: 2500000
+  l1_loss_factor: 45
+  denoise_strength: 0.0025
+
+trainer:
+  num_nodes: 1
+  devices: 1
+  accelerator: auto
+  strategy: auto
+  precision: 32
+  max_steps: ${model.max_steps}
+  accumulate_grad_batches: 1
+  enable_checkpointing: false
+  logger: false
+  log_every_n_steps: 100
+  check_val_every_n_epoch: 10
+  benchmark: false
+
+exp_manager:
+  exp_dir: outputs/hifigan_shona
+  name: ${name}
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  checkpoint_callback_params:
+    monitor: val_loss
+    mode: min
+  resume_if_exists: true
+  resume_ignore_no_checkpoint: true

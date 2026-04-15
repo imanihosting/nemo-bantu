@@ -42,21 +42,33 @@ This document tracks what has been implemented so far and what remains, based on
 
 ## Current Status
 
-- Project is at a **functional phase-2 scaffold state**.
-- End-to-end architecture is in place.
-- Real model quality depends on real checkpoints, real datasets, and language-specific normalization/G2P refinements.
+- Project is at **Phase 3: Training Execution — IN PROGRESS**.
+- FastPitch training is actively running on 12,954 Shona samples.
+- MFA alignment skipped in favor of `learn_alignment=true` (NeMo internal alignment).
+
+## Phase 3: Training Execution (Active)
+
+### Resolved Blockers
+- **nv_one_logger**: Resolved by creating stub package in venv (NVIDIA-internal telemetry not available on PyPI).
+- **MFA _kalpy**: Bypassed by using `learn_alignment=true` in FastPitch config (MFA is optional).
+- **NeMo import chain**: Installed all transitive deps (`einops`, `transformers`, `sentencepiece`, `kaldialign`, `pyannote.core`, `pyannote.metrics`, `jiwer`, `ipython`).
+- **Training script architecture**: Rewrote `train_fastpitch.py` and `train_hifigan.py` to use NeMo's official Hydra + PyTorch Lightning pattern instead of broken `python -m` subprocess calls.
+
+### Active Training
+- **Model**: FastPitch (45.7M params) with AlignmentEncoder
+- **Config**: `configs/training/fastpitch_shona.yaml`
+- **Dataset**: 12,954 Shona wav/txt pairs from `badrex/shona-speech`
+- **Tokenizer**: Character-level (`BaseCharsTokenizer` — Shona is phonemic)
+- **Epochs**: 1000 target
+- **Log**: `phase3_fastpitch_training.log`
+- **Checkpoints**: `outputs/fastpitch_shona/FastPitch_Shona/checkpoints/`
+
+### Pending
+- Monitor FastPitch training loss convergence
+- After FastPitch converges: train HiFi-GAN vocoder (`python training/train_hifigan.py`)
+- Export final `.nemo` checkpoints to `models/`
 
 ## Remaining Phases
-
-### Phase 3: Training Execution (Next)
-- Owner: ML Engineer
-- Target Date: 2026-05-15
-- Status: In Progress
-- Install and pin exact NeMo/MFA environment versions.
-- Prepare clean manifests with real durations and validated transcripts.
-- Run MFA alignment for each language dataset.
-- Train FastPitch and HiFi-GAN per target voice.
-- Save/checkpoint model artifacts under `models/`.
 
 ### Phase 4: Pronunciation and Frontend Accuracy
 - Owner: Language Engineer
@@ -105,32 +117,31 @@ This document tracks what has been implemented so far and what remains, based on
 
 ## Immediate Next Actions
 
-1. Pull Shona source data from Hugging Face (`badrex/shona-speech`) using `python scripts/fetch_shona_hf.py`.
-2. Run `./scripts/phase3_run.sh shona` to execute manifest -> validation -> alignment -> training entrypoints.
-3. Replace placeholder checkpoints with trained artifacts in `models/`.
+1. Monitor FastPitch training loss in `phase3_fastpitch_training.log`.
+2. After convergence (~200-500 epochs), train HiFi-GAN vocoder.
+3. Export trained checkpoints to `models/fastpitch.nemo` and `models/hifigan.nemo`.
 4. Run native-speaker pronunciation validation loop.
 
 ## Session Log (2026-04-15)
 
-- Switched to remote-only workflow on workstation path /home/blaquesoul/Desktop/nemo-bantu.
-- Verified Shona dataset availability under data/raw/shona (12,954 wav/txt pairs used in manifest build).
-- Verified MFA binary exists in project venv (Montreal_Forced_Aligner 3.3.9), but runtime import remains blocked by missing _kalpy.
-- Added and validated Phase-3 script controls on remote:
-  - scripts/phase3_run.sh supports SKIP_MFA=1
-  - training/align_mfa.py supports CLI args (--corpus-dir, --dictionary, --acoustic-model, --output-dir)
-- Ran Phase-3 baseline in background with SKIP_MFA=1:
-  - Manifest generation: success (entries=12954)
-  - Manifest validation: success (entries=12954)
-  - MFA: intentionally skipped
-  - FastPitch training start: failed before training due NeMo import chain
-- Current training blocker:
-  - ModuleNotFoundError: No module named nv_one_logger from NeMo Lightning callback path.
-- Current MFA blocker:
-  - ModuleNotFoundError: No module named _kalpy.
+- Cloned nemo-bantu repo to workstation.
+- Fetched full Shona dataset from HuggingFace (badrex/shona-speech): 12,954 wav/txt pairs, 12GB.
+- Installed `datasets<3.0` (compatible audio backend via soundfile/librosa instead of torchcodec).
+- Prepared and validated NeMo manifest (12,954 entries).
+- Created `nv_one_logger` stub package to unblock NeMo 2.7.2 imports.
+- Installed all NeMo transitive dependencies (einops, transformers, sentencepiece, kaldialign, pyannote, jiwer, ipython).
+- Created production-ready configs:
+  - `configs/training/fastpitch_shona.yaml` (character tokenizer, learn_alignment=true)
+  - `configs/training/hifigan_shona.yaml` (v1 generator, self-contained)
+- Rewrote training scripts using NeMo's official Hydra + Lightning pattern.
+- Updated `scripts/phase3_run.sh` to default SKIP_MFA=1.
+- Updated `.gitignore` to exclude data/raw, data/processed, models/*.nemo.
+- Ran successful 1-epoch smoke test (val_loss=54.46, checkpoint saved).
+- Launched full 1000-epoch FastPitch training in background.
 
-### Where We Left Off
+### Where We Are Now
 
-- Phase 3 remains In Progress.
-- Data preparation is working and repeatable.
-- Training/alignment runtime environments still need final compatibility fixes (nv_one_logger, _kalpy).
-- Phase 4 should start only after one successful Phase-3 end-to-end run (at least one trained artifact).
+- FastPitch training is **actively running** on the full Shona dataset.
+- Monitor with: `tail -f phase3_fastpitch_training.log`
+- Check checkpoint dir: `ls outputs/fastpitch_shona/FastPitch_Shona/checkpoints/`
+- Phase 4 starts after first successful trained artifact is produced.

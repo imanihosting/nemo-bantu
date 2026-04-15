@@ -1,19 +1,28 @@
+"""Train HiFi-GAN vocoder using NeMo + PyTorch Lightning.
+
+Usage:
+    python training/train_hifigan.py                            # defaults
+    python training/train_hifigan.py trainer.max_steps=100000   # override
+"""
 from pathlib import Path
-import subprocess
+
+import lightning.pytorch as pl
+
+from nemo.collections.tts.models import HifiGanModel
+from nemo.core.config import hydra_runner
+from nemo.utils.exp_manager import exp_manager
 
 
-def train_hifigan(config_path: Path) -> None:
-    if not config_path.exists():
-        raise FileNotFoundError(f"Missing config: {config_path}")
-    command = [
-        "python",
-        "-m",
-        "nemo.collections.tts.models.hifigan",
-        f"--config-path={config_path.parent}",
-        f"--config-name={config_path.stem}",
-    ]
-    subprocess.run(command, check=True)
+@hydra_runner(
+    config_path=str(Path(__file__).resolve().parent.parent / "configs" / "training"),
+    config_name="hifigan_shona",
+)
+def main(cfg):
+    trainer = pl.Trainer(**cfg.trainer)
+    exp_manager(trainer, cfg.get("exp_manager", None))
+    model = HifiGanModel(cfg=cfg.model, trainer=trainer)
+    trainer.fit(model)
 
 
 if __name__ == "__main__":
-    train_hifigan(config_path=Path("configs/training/hifigan_train.yaml"))
+    main()
