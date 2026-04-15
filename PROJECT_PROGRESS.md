@@ -49,6 +49,9 @@ This document tracks what has been implemented so far and what remains, based on
 ## Remaining Phases
 
 ### Phase 3: Training Execution (Next)
+- Owner: ML Engineer
+- Target Date: 2026-05-15
+- Status: Not Started
 - Install and pin exact NeMo/MFA environment versions.
 - Prepare clean manifests with real durations and validated transcripts.
 - Run MFA alignment for each language dataset.
@@ -56,12 +59,18 @@ This document tracks what has been implemented so far and what remains, based on
 - Save/checkpoint model artifacts under `models/`.
 
 ### Phase 4: Pronunciation and Frontend Accuracy
+- Owner: Language Engineer
+- Target Date: 2026-06-05
+- Status: Not Started
 - Build stronger normalization rules for:
   - numbers, abbreviations, names, slang, and code-switching
 - Expand per-language lexicons and override dictionaries.
 - Add phoneme inventory controls per language and QA with native speakers.
 
 ### Phase 5: Quality and Performance Optimization
+- Owner: ML + Platform Team
+- Target Date: 2026-06-25
+- Status: Not Started
 - Evaluate:
   - pronunciation accuracy
   - MOS/naturalness
@@ -71,6 +80,9 @@ This document tracks what has been implemented so far and what remains, based on
 - Add caching/batch strategies for production workloads.
 
 ### Phase 6: Production Readiness
+- Owner: Backend/DevOps Engineer
+- Target Date: 2026-07-10
+- Status: Not Started
 - Add observability:
   - request metrics, latency tracking, error logging
 - Add deployment packaging:
@@ -79,6 +91,9 @@ This document tracks what has been implemented so far and what remains, based on
 - Add load testing and failure recovery checks.
 
 ### Phase 7: PRD Roadmap Expansion (V1 and V2)
+- Owner: Product + Engineering Lead
+- Target Date: 2026-08-15
+- Status: Not Started
 - V1:
   - multiple voices
   - emotion control (pitch/speed)
