@@ -69,6 +69,9 @@ When these files exist and `nemo_toolkit` is installed, API synthesis uses NeMo 
 
 ## Phase 3 Execution
 
+Fetch Shona data from Hugging Face:
+- `python scripts/fetch_shona_hf.py --dataset badrex/shona-speech --split train --output-dir data/raw/shona`
+
 Run the phase-3 pipeline (example for Shona):
 - `chmod +x scripts/phase3_run.sh`
 - `./scripts/phase3_run.sh shona`

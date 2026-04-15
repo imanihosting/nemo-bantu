@@ -105,7 +105,7 @@ This document tracks what has been implemented so far and what remains, based on
 
 ## Immediate Next Actions
 
-1. Prepare per-language training data under `data/raw/<language>/` as `.wav` + `.txt` pairs.
+1. Pull Shona source data from Hugging Face (`badrex/shona-speech`) using `python scripts/fetch_shona_hf.py`.
 2. Run `./scripts/phase3_run.sh shona` to execute manifest -> validation -> alignment -> training entrypoints.
 3. Replace placeholder checkpoints with trained artifacts in `models/`.
 4. Run native-speaker pronunciation validation loop.

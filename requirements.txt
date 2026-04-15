@@ -9,3 +9,4 @@ torch
 nemo_toolkit
 omegaconf
 pytest
+datasets
