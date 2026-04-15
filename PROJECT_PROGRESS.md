@@ -51,7 +51,7 @@ This document tracks what has been implemented so far and what remains, based on
 ### Phase 3: Training Execution (Next)
 - Owner: ML Engineer
 - Target Date: 2026-05-15
-- Status: Not Started
+- Status: In Progress
 - Install and pin exact NeMo/MFA environment versions.
 - Prepare clean manifests with real durations and validated transcripts.
 - Run MFA alignment for each language dataset.
@@ -105,7 +105,7 @@ This document tracks what has been implemented so far and what remains, based on
 
 ## Immediate Next Actions
 
-1. Install dependencies and run tests.
-2. Place real NeMo checkpoints in `models/`.
-3. Start first language full training cycle (Shona recommended).
+1. Prepare per-language training data under `data/raw/<language>/` as `.wav` + `.txt` pairs.
+2. Run `./scripts/phase3_run.sh shona` to execute manifest -> validation -> alignment -> training entrypoints.
+3. Replace placeholder checkpoints with trained artifacts in `models/`.
 4. Run native-speaker pronunciation validation loop.

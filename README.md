@@ -66,3 +66,15 @@ Place NeMo checkpoints at:
 - `models/hifigan.nemo`
 
 When these files exist and `nemo_toolkit` is installed, API synthesis uses NeMo models.
+
+## Phase 3 Execution
+
+Run the phase-3 pipeline (example for Shona):
+- `chmod +x scripts/phase3_run.sh`
+- `./scripts/phase3_run.sh shona`
+
+This will:
+- prepare a duration-aware manifest
+- validate manifest integrity
+- run MFA alignment
+- start FastPitch and HiFi-GAN training entrypoints
