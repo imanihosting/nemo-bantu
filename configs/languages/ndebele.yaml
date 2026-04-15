@@ -1,0 +1,16 @@
+language: ndebele
+code: nd
+
+normalization:
+  lowercase: true
+  expand_numbers: true
+
+g2p:
+  use_lexicon_first: true
+  preserve_prenasalized:
+    - mb
+    - nd
+    - ng
+  preserve_clusters:
+    - tsh
+    - kh

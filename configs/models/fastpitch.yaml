@@ -1,0 +1,3 @@
+model: fastpitch
+framework: nemo
+notes: "Populate with official NeMo FastPitch config/checkpoint values."

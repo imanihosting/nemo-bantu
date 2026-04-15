@@ -1,0 +1,3 @@
+# word phoneme-sequence
+mhoro m h o r o
+ndiri n d i r i

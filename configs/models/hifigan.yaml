@@ -1,0 +1,3 @@
+model: hifigan
+framework: nemo
+notes: "Populate with official NeMo HiFi-GAN config/checkpoint values."

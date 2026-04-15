@@ -1,0 +1,20 @@
+project:
+  name: bantu-tts
+  stage: phase-2
+
+inference:
+  sample_rate: 22050
+  output_format: wav
+
+frontend:
+  default_language: shona
+  supported_languages:
+    - shona
+    - ndebele
+    - zulu
+    - xhosa
+  lexicon_dir: frontend/lexicons
+
+models:
+  fastpitch_checkpoint: models/fastpitch.nemo
+  hifigan_checkpoint: models/hifigan.nemo

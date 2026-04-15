@@ -1,0 +1,3 @@
+# word phoneme-sequence
+sawubona s a w u b o n a
+ngiyaphila ng i y a ph i l a

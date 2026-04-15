@@ -1,0 +1,17 @@
+language: zulu
+code: zu
+
+normalization:
+  lowercase: true
+  expand_numbers: true
+
+g2p:
+  use_lexicon_first: true
+  preserve_prenasalized:
+    - mb
+    - nd
+    - ng
+  preserve_clusters:
+    - hl
+    - dl
+    - kh

@@ -1,0 +1,3 @@
+# word phoneme-sequence
+molo m o l o
+ndiphilile nd i ph i l i l e

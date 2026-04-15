@@ -1,0 +1,3 @@
+# word phoneme-sequence
+sawubona s a w u b o n a
+ngikhona ng i kh o n a

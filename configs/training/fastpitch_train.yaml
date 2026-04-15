@@ -1,0 +1,6 @@
+training:
+  model: fastpitch
+  epochs: 1000
+  batch_size: 16
+  manifest_path: data/manifests/train_manifest.jsonl
+  output_dir: outputs/fastpitch
