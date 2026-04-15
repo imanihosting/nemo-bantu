@@ -6,3 +6,13 @@ outputs/
 *.log
 *.tmp
 ssh-remote.md
+
+# Dataset and model artifacts
+data/raw/
+data/processed/
+data/manifests/
+models/*.nemo
+models/*.ckpt
+
+# HF cache
+.cache/
