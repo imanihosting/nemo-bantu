@@ -109,3 +109,28 @@ This document tracks what has been implemented so far and what remains, based on
 2. Run `./scripts/phase3_run.sh shona` to execute manifest -> validation -> alignment -> training entrypoints.
 3. Replace placeholder checkpoints with trained artifacts in `models/`.
 4. Run native-speaker pronunciation validation loop.
+
+## Session Log (2026-04-15)
+
+- Switched to remote-only workflow on workstation path /home/blaquesoul/Desktop/nemo-bantu.
+- Verified Shona dataset availability under data/raw/shona (12,954 wav/txt pairs used in manifest build).
+- Verified MFA binary exists in project venv (Montreal_Forced_Aligner 3.3.9), but runtime import remains blocked by missing _kalpy.
+- Added and validated Phase-3 script controls on remote:
+  - scripts/phase3_run.sh supports SKIP_MFA=1
+  - training/align_mfa.py supports CLI args (--corpus-dir, --dictionary, --acoustic-model, --output-dir)
+- Ran Phase-3 baseline in background with SKIP_MFA=1:
+  - Manifest generation: success (entries=12954)
+  - Manifest validation: success (entries=12954)
+  - MFA: intentionally skipped
+  - FastPitch training start: failed before training due NeMo import chain
+- Current training blocker:
+  - ModuleNotFoundError: No module named nv_one_logger from NeMo Lightning callback path.
+- Current MFA blocker:
+  - ModuleNotFoundError: No module named _kalpy.
+
+### Where We Left Off
+
+- Phase 3 remains In Progress.
+- Data preparation is working and repeatable.
+- Training/alignment runtime environments still need final compatibility fixes (nv_one_logger, _kalpy).
+- Phase 4 should start only after one successful Phase-3 end-to-end run (at least one trained artifact).
