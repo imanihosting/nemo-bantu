@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .env
 outputs/
+outputs/test_audio/
 *.log
 *.tmp
 ssh-remote.md
