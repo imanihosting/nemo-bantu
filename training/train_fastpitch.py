@@ -13,8 +13,23 @@ from pathlib import Path
 
 import torch
 import lightning.pytorch as pl
+# ── PyTorch 2.6 weights_only workaround ──────────────────────────────────────
+_original_load = torch.load
+def _unsafe_load(*args, **kwargs):
+    kwargs["weights_only"] = False
+    return _original_load(*args, **kwargs)
+torch.load = _unsafe_load
 
-from nemo.collections.common.callbacks import LogEpochTimeCallback
+# ── Safe epoch timer (replaces NeMo's broken LogEpochTimeCallback on resume) ──
+import time as _time
+class SafeEpochTimeCallback(pl.Callback):
+    """Logs epoch duration; safe on checkpoint resume (epoch_start may be missing)."""
+    def on_train_epoch_start(self, trainer, pl_module):
+        self.epoch_start = _time.monotonic()
+    def on_train_epoch_end(self, trainer, pl_module):
+        start = getattr(self, "epoch_start", None)
+        if start is not None:
+            log.info(f"Epoch {trainer.current_epoch} duration: {_time.monotonic() - start:.1f}s")
 from nemo.collections.tts.models import FastPitchModel
 from nemo.core.config import hydra_runner
 from nemo.utils.exp_manager import exp_manager
@@ -57,7 +72,7 @@ def main(cfg):
     model = FastPitchModel(cfg=cfg.model, trainer=trainer)
 
     lr_logger = pl.callbacks.LearningRateMonitor()
-    epoch_time_logger = LogEpochTimeCallback()
+    epoch_time_logger = SafeEpochTimeCallback()
     trainer.callbacks.extend([lr_logger, epoch_time_logger])
 
     trainer.fit(model)

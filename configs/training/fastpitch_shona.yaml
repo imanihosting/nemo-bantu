@@ -85,11 +85,14 @@ model:
     dataloader_params:
       drop_last: false
       shuffle: true
-      batch_size: 16
-      # 2 workers keeps CPU usage well under 80% during preprocessing.
-      # (4 workers caused CPU thrashing that coincided with prior training kills)
-      num_workers: 2
-      pin_memory: true
+      # Batch 8: halved to reduce peak memory per step during align_prior computation
+      batch_size: 8
+      # 1 worker: fewer forked procs = less CoW memory duplication from Python heap
+      # On GB10 unified memory, each worker copies the parent's full address space
+      num_workers: 0
+      # pin_memory FALSE: on GB10, pinning locks pages in the shared CPU+GPU memory
+      # pool permanently — with 12954 samples this filled all 119GB. Disabled.
+      pin_memory: false
 
   validation_ds:
     dataset:
@@ -119,9 +122,9 @@ model:
     dataloader_params:
       drop_last: false
       shuffle: false
-      batch_size: 16
-      num_workers: 2
-      pin_memory: true
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
 
   preprocessor:
     _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor

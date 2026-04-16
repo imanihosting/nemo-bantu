@@ -14,5 +14,10 @@ data/manifests/
 models/*.nemo
 models/*.ckpt
 
+# Runtime training artifacts (auto-generated each run)
+logs/inner_train_*.sh
+logs/watchdog_*.sh
+logs/training_status.txt
+
 # HF cache
 .cache/
