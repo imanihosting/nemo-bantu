@@ -95,19 +95,30 @@ def save_wav(audio_np: np.ndarray, filepath: Path, sample_rate: int = 22050):
 
 
 def griffin_lim(spectrogram: np.ndarray, n_fft: int = 1024, hop_length: int = 256,
-               n_iter: int = 60) -> np.ndarray:
-    """Simple Griffin-Lim algorithm to convert mel spectrogram to audio.
+               n_iter: int = 60, sample_rate: int = 22050, n_mels: int = 80) -> np.ndarray:
+    """Griffin-Lim algorithm to convert mel spectrogram to audio.
 
     This is a rough approximation — HiFi-GAN will sound much better, but
     this works without downloading any extra model.
+
+    Steps: log-mel → mel (exp) → linear STFT magnitude → Griffin-Lim → audio
     """
     import librosa
-    # spectrogram is log-mel, convert back to linear
-    S = np.exp(spectrogram)
+
+    # spectrogram is log-mel (80 bins), convert back to mel power
+    S_mel = np.exp(spectrogram)
+
+    # Convert mel spectrogram back to linear STFT magnitude (n_fft/2+1 bins)
+    S_linear = librosa.feature.inverse.mel_to_stft(
+        S_mel, sr=sample_rate, n_fft=n_fft, power=1.0
+    )
+
+    # Apply Griffin-Lim on the full linear spectrogram
     audio = librosa.griffinlim(
-        S, n_iter=n_iter, hop_length=hop_length, n_fft=n_fft,
+        S_linear, n_iter=n_iter, hop_length=hop_length, n_fft=n_fft,
         window="hann", center=True, length=None
     )
+
     # Normalize
     peak = np.abs(audio).max()
     if peak > 0:
