@@ -1,3 +1,41 @@
-# word phoneme-sequence
-mhoro m h o r o
-ndiri n d i r i
+# Shona pronunciation lexicon (bootstrap)
+# Format: <orthography>\t<space-separated IPA phonemes>
+# Resolution order: this file overrides rule-based G2P; per-language `overrides`
+# dict overrides this file. Native-speaker review required before production.
+#
+# Expansion targets:
+#   - 5,000-10,000 headwords for production quality.
+#   - Source candidates: Shona Wiktionary, ALLEX corpus, public Bible
+#     translations, native-speaker review queue.
+#   - Track every entry's reviewer in a parallel `lexicons/shona.review.csv`.
+
+# Greetings & common interjections
+mhoro       m h o r o
+mhoroi      m h o r o i
+makadii     m a k a d i i
+ndinodawo   ⁿd i n o d a w o
+zvakanaka   zʷ a k a n a k a
+ndatenda    ⁿd a t e ⁿd a
+sara        s a r a
+
+# Pronouns
+ini         i n i
+iwe         i w e
+isu         i s u
+imi         i m i
+ivo         i v o
+ndi         ⁿd i
+
+# High-frequency verbs (root forms)
+kuita       k u i t a
+kuenda      k u e ⁿd a
+kuuya       k u u j a
+kudya       k u dʒ a
+kunwa       k u ⁿ w a
+
+# Nouns / cultural items
+mbira       ᵐb i r a
+nyika       ɲ i k a
+mvura       ᵐ v u r a
+moto        m o t o
+zuva        z u v a

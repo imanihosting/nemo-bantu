@@ -1,3 +1,32 @@
-# word phoneme-sequence
-sawubona s a w u b o n a
-ngikhona ng i kh o n a
+# Northern Ndebele (Zimbabwe) pronunciation lexicon (bootstrap)
+# Format: <orthography>\t<space-separated IPA phonemes>
+# Click consonants encoded with IPA: ǀ (dental), ǃ (alveolar), ǁ (lateral).
+# Native-speaker review required before production.
+
+# Greetings
+sawubona     s a w u ɓ o n a
+salibonani   s a l i ɓ o n a n i
+unjani       u ⁿ dʒ a n i
+ngikhona     ᵑɡ i kʰ o n a
+ngiyabonga   ᵑɡ i j a ɓ o ᵑɡ a
+hamba        h a ᵐb a
+sala         s a l a
+
+# Pronouns
+mina         m i n a
+wena         w e n a
+yena         j e n a
+thina        tʰ i n a
+lina         l i n a
+bona         ɓ o n a
+
+# Click-bearing high-frequency words
+icala        i ǀ a l a
+iqanda       i ǃ a ⁿd a
+ixoxo        i ǁ o ǁ o
+
+# Common verbs
+ukudla       u k u ɮ a
+ukufunda     u k u f u ⁿd a
+ukuhamba     u k u h a ᵐb a
+ukubona      u k u ɓ o n a

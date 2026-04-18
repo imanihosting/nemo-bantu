@@ -1,0 +1,231 @@
+# FastPitch training config for Shona TTS — Phase C (phoneme tokenizer)
+#
+# This config is the Phase C successor to fastpitch_shona.yaml. It swaps the
+# stock NeMo EnglishCharsTokenizer for the project's BantuPhonemeTokenizer so
+# the model learns phoneme -> mel mapping instead of letter -> mel mapping.
+# Use this AFTER the Phase A baseline (character tokenizer) has trained and
+# been recorded as a comparison point.
+#
+# Manifests must contain phoneme strings, not raw text. Run
+# `python training/prepare_data.py --phonemise` (TODO: add flag) to produce
+# `data/manifests/shona_train_manifest.phoneme.jsonl` before launching.
+
+name: FastPitch_Shona_Phoneme
+
+train_dataset: data/manifests/shona_train_manifest.phoneme.jsonl
+validation_datasets: data/manifests/shona_train_manifest.phoneme.jsonl
+sup_data_path: data/processed/sup_data_shona_phoneme
+sup_data_types: ["align_prior_matrix", "pitch"]
+
+pitch_fmin: 65.40639132514966
+pitch_fmax: 2093.004522404789
+pitch_mean: 200.0
+pitch_std: 60.0
+
+sample_rate: 22050
+n_mel_channels: 80
+n_window_size: 1024
+n_window_stride: 256
+n_fft: 1024
+lowfreq: 0
+highfreq: 8000
+window: hann
+
+model:
+  learn_alignment: true
+  bin_loss_warmup_epochs: 100
+
+  n_speakers: 1
+  max_token_duration: 75
+  symbols_embedding_dim: 384
+  pitch_embedding_kernel_size: 3
+
+  pitch_fmin: ${pitch_fmin}
+  pitch_fmax: ${pitch_fmax}
+  pitch_mean: ${pitch_mean}
+  pitch_std: ${pitch_std}
+
+  sample_rate: ${sample_rate}
+  n_mel_channels: ${n_mel_channels}
+  n_window_size: ${n_window_size}
+  n_window_stride: ${n_window_stride}
+  n_fft: ${n_fft}
+  lowfreq: ${lowfreq}
+  highfreq: ${highfreq}
+  window: ${window}
+
+  # Phase C tokenizer: project-owned BantuPhonemeTokenizer covering all four
+  # target languages. IDs are stable across runs (special tokens occupy the
+  # lowest IDs; phonemes sorted lexicographically). See frontend/nemo_tokenizer.py.
+  text_tokenizer:
+    _target_: frontend.nemo_tokenizer.BantuPhonemeTokenizer
+    languages: ["shona", "ndebele", "zulu", "xhosa"]
+
+  train_ds:
+    dataset:
+      _target_: nemo.collections.tts.data.dataset.TTSDataset
+      manifest_filepath: ${train_dataset}
+      sample_rate: ${model.sample_rate}
+      sup_data_path: ${sup_data_path}
+      sup_data_types: ${sup_data_types}
+      n_fft: ${model.n_fft}
+      win_length: ${model.n_window_size}
+      hop_length: ${model.n_window_stride}
+      window: ${model.window}
+      n_mels: ${model.n_mel_channels}
+      lowfreq: ${model.lowfreq}
+      highfreq: ${model.highfreq}
+      max_duration: null
+      min_duration: 0.1
+      ignore_file: null
+      trim: false
+      pitch_fmin: ${model.pitch_fmin}
+      pitch_fmax: ${model.pitch_fmax}
+      pitch_norm: true
+      pitch_mean: ${model.pitch_mean}
+      pitch_std: ${model.pitch_std}
+      use_beta_binomial_interpolator: true
+
+    dataloader_params:
+      drop_last: false
+      shuffle: true
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
+
+  validation_ds:
+    dataset:
+      _target_: nemo.collections.tts.data.dataset.TTSDataset
+      manifest_filepath: ${validation_datasets}
+      sample_rate: ${model.sample_rate}
+      sup_data_path: ${sup_data_path}
+      sup_data_types: ${sup_data_types}
+      n_fft: ${model.n_fft}
+      win_length: ${model.n_window_size}
+      hop_length: ${model.n_window_stride}
+      window: ${model.window}
+      n_mels: ${model.n_mel_channels}
+      lowfreq: ${model.lowfreq}
+      highfreq: ${model.highfreq}
+      max_duration: null
+      min_duration: null
+      ignore_file: null
+      trim: false
+      pitch_fmin: ${model.pitch_fmin}
+      pitch_fmax: ${model.pitch_fmax}
+      pitch_norm: true
+      pitch_mean: ${model.pitch_mean}
+      pitch_std: ${model.pitch_std}
+      use_beta_binomial_interpolator: true
+
+    dataloader_params:
+      drop_last: false
+      shuffle: false
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
+
+  preprocessor:
+    _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
+    features: ${model.n_mel_channels}
+    lowfreq: ${model.lowfreq}
+    highfreq: ${model.highfreq}
+    n_fft: ${model.n_fft}
+    n_window_size: ${model.n_window_size}
+    window_size: false
+    n_window_stride: ${model.n_window_stride}
+    window_stride: false
+    pad_to: 1
+    pad_value: 0
+    sample_rate: ${model.sample_rate}
+    window: ${model.window}
+    normalize: null
+    preemph: null
+    dither: 0.0
+    frame_splicing: 1
+    log: true
+    log_zero_guard_type: add
+    log_zero_guard_value: 1e-05
+    mag_power: 1.0
+
+  input_fft:
+    _target_: nemo.collections.tts.modules.transformer.FFTransformerEncoder
+    n_layer: 6
+    n_head: 1
+    d_model: ${model.symbols_embedding_dim}
+    d_head: 64
+    d_inner: 1536
+    kernel_size: 3
+    dropout: 0.1
+    dropatt: 0.1
+    dropemb: 0.0
+    d_embed: ${model.symbols_embedding_dim}
+
+  output_fft:
+    _target_: nemo.collections.tts.modules.transformer.FFTransformerDecoder
+    n_layer: 6
+    n_head: 1
+    d_model: ${model.symbols_embedding_dim}
+    d_head: 64
+    d_inner: 1536
+    kernel_size: 3
+    dropout: 0.1
+    dropatt: 0.1
+    dropemb: 0.0
+
+  alignment_module:
+    _target_: nemo.collections.tts.modules.aligner.AlignmentEncoder
+    n_text_channels: ${model.symbols_embedding_dim}
+
+  duration_predictor:
+    _target_: nemo.collections.tts.modules.fastpitch.TemporalPredictor
+    input_size: ${model.symbols_embedding_dim}
+    kernel_size: 3
+    filter_size: 256
+    dropout: 0.1
+    n_layers: 2
+
+  pitch_predictor:
+    _target_: nemo.collections.tts.modules.fastpitch.TemporalPredictor
+    input_size: ${model.symbols_embedding_dim}
+    kernel_size: 3
+    filter_size: 256
+    dropout: 0.1
+    n_layers: 2
+
+  optim:
+    name: adamw
+    lr: 1e-3
+    betas: [0.9, 0.999]
+    weight_decay: 1e-6
+
+    sched:
+      name: NoamAnnealing
+      warmup_steps: 1000
+      last_epoch: -1
+      d_model: 1
+
+trainer:
+  num_nodes: 1
+  devices: 1
+  accelerator: gpu
+  strategy: auto
+  precision: 16-mixed
+  max_epochs: 1000
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1000.0
+  enable_checkpointing: false
+  logger: false
+  log_every_n_steps: 100
+  check_val_every_n_epoch: 5
+  benchmark: true
+
+exp_manager:
+  exp_dir: outputs/fastpitch_shona_phoneme
+  name: ${name}
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  checkpoint_callback_params:
+    monitor: val_loss
+  resume_if_exists: true
+  resume_ignore_no_checkpoint: true

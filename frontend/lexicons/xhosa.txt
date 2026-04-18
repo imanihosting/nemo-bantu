@@ -1,3 +1,34 @@
-# word phoneme-sequence
-molo m o l o
-ndiphilile nd i ph i l i l e
+# Xhosa pronunciation lexicon (bootstrap)
+# Format: <orthography>\t<space-separated IPA phonemes>
+# Click consonants encoded with IPA: ǀ (dental), ǃ (alveolar), ǁ (lateral).
+# Native-speaker review required before production.
+
+# Greetings
+molo         m o l o
+molweni      m o l w e n i
+unjani       u ⁿ dʒ a n i
+ndiphilile   ⁿd i pʰ i l i l e
+enkosi       e ŋ k o s i
+hamba        h a ᵐb a
+sala         s a l a
+
+# Pronouns
+mna          m n a
+wena         w e n a
+yena         j e n a
+thina        tʰ i n a
+nina         n i n a
+bona         ɓ o n a
+
+# Click-bearing high-frequency words
+ixhego       i ǁʰ e ɡ o
+iqaqa        i ǃ a ǃ a
+icici        i ǀ i ǀ i
+ngqondo      ŋǃʱ o ⁿd o
+xhosa        ǁʰ o s a
+
+# Common verbs
+ukutya       u k u tʰ j a
+ukufunda     u k u f u ⁿd a
+ukuhamba     u k u h a ᵐb a
+ukubona      u k u ɓ o n a
