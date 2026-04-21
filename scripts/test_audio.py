@@ -132,6 +132,8 @@ def main():
                         help="Path to FastPitch .ckpt file (default: auto-find best)")
     parser.add_argument("--hifigan", type=str, default="tts_en_hifigan",
                         help="Pretrained HiFi-GAN model name or .nemo path (default: tts_en_hifigan)")
+    parser.add_argument("--hifigan-ckpt", type=str, default=None,
+                        help="Path to fine-tuned HiFi-GAN .ckpt file (overrides --hifigan)")
     parser.add_argument("--griffin-lim", action="store_true",
                         help="Use Griffin-Lim instead of HiFi-GAN (no download needed)")
     parser.add_argument("--sentences", type=str, nargs="*", default=None,
@@ -150,9 +152,15 @@ def main():
     epoch = extract_epoch(ckpt_path)
     print(f"\n{'='*60}")
     print(f"  🎤 FastPitch Audio Test")
+    if args.hifigan_ckpt:
+        vocoder_label = f"HiFi-GAN (fine-tuned: {Path(args.hifigan_ckpt).name})"
+    elif args.griffin_lim:
+        vocoder_label = "Griffin-Lim"
+    else:
+        vocoder_label = f"HiFi-GAN ({args.hifigan})"
     print(f"  Checkpoint : {ckpt_path.name}")
     print(f"  Epoch      : {epoch}")
-    print(f"  Vocoder    : {'Griffin-Lim' if args.griffin_lim else args.hifigan}")
+    print(f"  Vocoder    : {vocoder_label}")
     print(f"{'='*60}\n")
 
     # ── Load FastPitch from .ckpt ─────────────────────────────────────────────
@@ -178,18 +186,39 @@ def main():
     # ── Load vocoder ──────────────────────────────────────────────────────────
     vocoder = None
     if not args.griffin_lim:
-        print(f"⏳ Loading HiFi-GAN vocoder ({args.hifigan})...")
         from nemo.collections.tts.models import HifiGanModel
-        if Path(args.hifigan).exists():
+
+        if args.hifigan_ckpt:
+            # Load fine-tuned HiFi-GAN from Lightning checkpoint
+            ckpt_file = Path(args.hifigan_ckpt)
+            print(f"⏳ Loading fine-tuned HiFi-GAN from {ckpt_file.name}...")
+            from omegaconf import OmegaConf as OC
+            hifi_cfg_path = PROJECT_DIR / "configs" / "training" / "hifigan_shona.yaml"
+            hifi_cfg = OC.load(str(hifi_cfg_path))
+            vocoder = HifiGanModel(cfg=hifi_cfg.model)
+            hifi_ckpt = torch.load(str(ckpt_file), map_location="cpu")
+            if "state_dict" in hifi_ckpt:
+                vocoder.load_state_dict(hifi_ckpt["state_dict"], strict=False)
+            else:
+                vocoder.load_state_dict(hifi_ckpt, strict=False)
+        elif Path(args.hifigan).exists():
+            print(f"⏳ Loading HiFi-GAN from {args.hifigan}...")
             vocoder = HifiGanModel.restore_from(args.hifigan)
         else:
+            print(f"⏳ Loading HiFi-GAN vocoder ({args.hifigan})...")
             vocoder = HifiGanModel.from_pretrained(model_name=args.hifigan)
+
         vocoder = vocoder.eval().to(device)
         print(f"  ✅ HiFi-GAN loaded")
 
     # ── Create output directory ───────────────────────────────────────────────
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    vocoder_name = "griffinlim" if args.griffin_lim else "hifigan"
+    if args.griffin_lim:
+        vocoder_name = "griffinlim"
+    elif args.hifigan_ckpt:
+        vocoder_name = "hifigan_shona"
+    else:
+        vocoder_name = "hifigan_en"
     run_dir = OUTPUT_DIR / f"epoch{epoch}_{vocoder_name}_{timestamp}"
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n📁 Output: {run_dir}\n")

@@ -1,40 +1,42 @@
-# HiFi-GAN vocoder training config for Shona TTS
-# Adapted from NeMo examples/tts/conf/hifigan/hifigan.yaml
-# Self-contained (no nested defaults) for standalone use
+# HiFi-GAN vocoder fine-tuning config for Shona TTS
+# Fine-tunes pretrained English HiFi-GAN (tts_en_hifigan) on Shona audio
+# Audio parameters MUST match the FastPitch config exactly
 
-name: HifiGan_Shona
+name: HiFiGAN_Shona
 
-train_dataset: data/manifests/shona_train_manifest.jsonl
-validation_datasets: data/manifests/shona_train_manifest.jsonl
+# ── Dataset manifest paths ───────────────────────────────────────────────────
+# These will be created by the split script before training starts
+train_dataset: data/manifests/shona_hifigan_train.jsonl
+validation_datasets: data/manifests/shona_hifigan_val.jsonl
 
+# ── Audio parameters (must match FastPitch config) ───────────────────────────
 sample_rate: 22050
-n_mel_channels: 80
-n_window_size: 1024
-n_window_stride: 256
 n_fft: 1024
+n_window_size: 1024
+n_window_stride: 256    # hop_length
+n_mel_channels: 80
 lowfreq: 0
 highfreq: 8000
 window: hann
 
-train_n_segments: 8192
-train_max_duration: null
-train_min_duration: 0.75
-
-val_n_segments: 66048
-val_max_duration: null
-val_min_duration: 3
-
 model:
+  # Maximum training epochs (via trainer config below)
+  max_epochs: ${trainer.max_epochs}
+
+  l1_loss_factor: 45
+
   preprocessor:
-    _target_: nemo.collections.asr.parts.preprocessing.features.FilterbankFeatures
+    _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
     nfilt: ${n_mel_channels}
     lowfreq: ${lowfreq}
     highfreq: ${highfreq}
     n_fft: ${n_fft}
     n_window_size: ${n_window_size}
+    window_size: false
     n_window_stride: ${n_window_stride}
-    pad_to: 0
-    pad_value: -11.52
+    window_stride: false
+    pad_to: 1
+    pad_value: 0
     sample_rate: ${sample_rate}
     window: ${window}
     normalize: null
@@ -42,81 +44,86 @@ model:
     dither: 0.0
     frame_splicing: 1
     log: true
-    log_zero_guard_type: clamp
+    log_zero_guard_type: add
     log_zero_guard_value: 1e-05
     mag_power: 1.0
-    use_grads: false
-    exact_pad: true
 
+  # ── HiFi-GAN Generator architecture ─────────────────────────────────────
   generator:
     _target_: nemo.collections.tts.modules.hifigan_modules.Generator
-    in_channels: ${n_mel_channels}
-    out_channels: 1
     resblock: 1
-    resblock_kernel_sizes: [3, 7, 11]
-    resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
-    upsample_rates: [8, 8, 2, 2]
-    upsample_initial_channel: 512
+    upsample_rates: [8, 8, 2, 2]          # product = 256 = hop_length
     upsample_kernel_sizes: [16, 16, 4, 4]
+    upsample_initial_channel: 512
+    resblock_kernel_sizes: [3, 7, 11]
+    resblock_dilation_sizes: [[1,3,5], [1,3,5], [1,3,5]]
 
+  # ── Training dataset ────────────────────────────────────────────────────
   train_ds:
     dataset:
       _target_: nemo.collections.tts.data.vocoder_dataset.VocoderDataset
-      manifest_filepath: ${train_dataset}
+      dataset_meta:
+        shona:
+          manifest_path: ${train_dataset}
+          audio_dir: ./
       sample_rate: ${sample_rate}
-      n_segments: ${train_n_segments}
-      max_duration: ${train_max_duration}
-      min_duration: ${train_min_duration}
+      n_samples: 8192
+      min_duration: 0.5
+      max_duration: null
 
     dataloader_params:
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
       drop_last: true
       shuffle: true
-      batch_size: 16
-      num_workers: 4
 
+  # ── Validation dataset ──────────────────────────────────────────────────
   validation_ds:
     dataset:
       _target_: nemo.collections.tts.data.vocoder_dataset.VocoderDataset
-      manifest_filepath: ${validation_datasets}
+      dataset_meta:
+        shona:
+          manifest_path: ${validation_datasets}
+          audio_dir: ./
       sample_rate: ${sample_rate}
-      n_segments: ${val_n_segments}
-      max_duration: ${val_max_duration}
-      min_duration: ${val_min_duration}
+      n_samples: null
+      min_duration: 0.5
+      max_duration: 10.0
 
     dataloader_params:
+      batch_size: 4
+      num_workers: 0
+      pin_memory: false
       drop_last: false
       shuffle: false
-      batch_size: 4
-      num_workers: 2
 
+  # ── Optimizer (lower LR for fine-tuning) ────────────────────────────────
   optim:
     _target_: torch.optim.AdamW
     lr: 0.0002
     betas: [0.8, 0.99]
 
     sched:
-      name: CosineAnnealing
-      min_lr: 1e-5
-      warmup_ratio: 0.02
+      name: ExponentialLR
+      gamma: 0.999
 
-  max_steps: 2500000
-  l1_loss_factor: 45
-  denoise_strength: 0.0025
-
+# ── Trainer ───────────────────────────────────────────────────────────────────
 trainer:
   num_nodes: 1
   devices: 1
-  accelerator: auto
+  accelerator: gpu
   strategy: auto
-  precision: 32
-  max_steps: ${model.max_steps}
+  precision: 32-true
+  max_epochs: 500
   accumulate_grad_batches: 1
   enable_checkpointing: false
   logger: false
   log_every_n_steps: 100
   check_val_every_n_epoch: 10
-  benchmark: false
+  benchmark: true
 
+# ── Experiment manager ────────────────────────────────────────────────────────
 exp_manager:
   exp_dir: outputs/hifigan_shona
   name: ${name}
@@ -124,6 +131,7 @@ exp_manager:
   create_checkpoint_callback: true
   checkpoint_callback_params:
     monitor: val_loss
+    save_top_k: 3
     mode: min
   resume_if_exists: true
   resume_ignore_no_checkpoint: true
