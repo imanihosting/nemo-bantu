@@ -190,12 +190,11 @@ def main():
 
         if args.hifigan_ckpt:
             # Load fine-tuned HiFi-GAN from Lightning checkpoint
+            # Strategy: load pretrained model first (avoids trainer/dataloader issues),
+            # then overwrite weights with the fine-tuned checkpoint
             ckpt_file = Path(args.hifigan_ckpt)
             print(f"⏳ Loading fine-tuned HiFi-GAN from {ckpt_file.name}...")
-            from omegaconf import OmegaConf as OC
-            hifi_cfg_path = PROJECT_DIR / "configs" / "training" / "hifigan_shona.yaml"
-            hifi_cfg = OC.load(str(hifi_cfg_path))
-            vocoder = HifiGanModel(cfg=hifi_cfg.model)
+            vocoder = HifiGanModel.from_pretrained(model_name="tts_en_hifigan")
             hifi_ckpt = torch.load(str(ckpt_file), map_location="cpu")
             if "state_dict" in hifi_ckpt:
                 vocoder.load_state_dict(hifi_ckpt["state_dict"], strict=False)

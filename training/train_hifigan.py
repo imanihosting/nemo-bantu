@@ -32,6 +32,93 @@ torch.load = _unsafe_load
 
 torch.set_float32_matmul_precision("high")
 
+# ── Monkey-patch HiFi-GAN to handle off-by-one mel frames ─────────────────────
+# The STFT roundtrip (audio→mel→generator→audio→mel) can produce spectrograms
+# that differ by 1 frame, causing F.l1_loss to fail on dimension mismatch.
+import torch.nn.functional as F
+
+def _patched_training_step(self, batch, batch_idx):
+    audio, audio_len, audio_mel, _ = self._process_batch(batch)
+
+    audio_trg_mel, _ = self.trg_melspec_fn(audio, audio_len)
+    audio = audio.unsqueeze(1)
+
+    audio_pred = self.generator(x=audio_mel)
+
+    # Truncate audio_pred to match audio length (generator may produce
+    # slightly different length due to STFT framing)
+    min_audio_len = min(audio.shape[2], audio_pred.shape[2])
+    audio = audio[:, :, :min_audio_len]
+    audio_pred = audio_pred[:, :, :min_audio_len]
+
+    audio_pred_mel, _ = self.trg_melspec_fn(audio_pred.squeeze(1), audio_len)
+
+    optim_g, optim_d = self.optimizers()
+
+    # Train discriminator
+    optim_d.zero_grad()
+    mpd_score_real, mpd_score_gen, _, _ = self.mpd(y=audio, y_hat=audio_pred.detach())
+    loss_disc_mpd, _, _ = self.discriminator_loss(
+        disc_real_outputs=mpd_score_real, disc_generated_outputs=mpd_score_gen
+    )
+    msd_score_real, msd_score_gen, _, _ = self.msd(y=audio, y_hat=audio_pred.detach())
+    loss_disc_msd, _, _ = self.discriminator_loss(
+        disc_real_outputs=msd_score_real, disc_generated_outputs=msd_score_gen
+    )
+    loss_d = loss_disc_msd + loss_disc_mpd
+    self.manual_backward(loss_d)
+    optim_d.step()
+
+    # Train generator — truncate mels to min length for L1 loss
+    optim_g.zero_grad()
+    min_mel_len = min(audio_pred_mel.shape[2], audio_trg_mel.shape[2])
+    loss_mel = F.l1_loss(audio_pred_mel[:, :, :min_mel_len], audio_trg_mel[:, :, :min_mel_len])
+    _, mpd_score_gen, fmap_mpd_real, fmap_mpd_gen = self.mpd(y=audio, y_hat=audio_pred)
+    _, msd_score_gen, fmap_msd_real, fmap_msd_gen = self.msd(y=audio, y_hat=audio_pred)
+    loss_fm_mpd = self.feature_loss(fmap_r=fmap_mpd_real, fmap_g=fmap_mpd_gen)
+    loss_fm_msd = self.feature_loss(fmap_r=fmap_msd_real, fmap_g=fmap_msd_gen)
+    loss_gen_mpd, _ = self.generator_loss(disc_outputs=mpd_score_gen)
+    loss_gen_msd, _ = self.generator_loss(disc_outputs=msd_score_gen)
+    loss_g = loss_gen_msd + loss_gen_mpd + loss_fm_msd + loss_fm_mpd + loss_mel * self.l1_factor
+    self.manual_backward(loss_g)
+    optim_g.step()
+
+    self.update_lr()
+
+    metrics = {
+        "g_loss_fm_mpd": loss_fm_mpd,
+        "g_loss_fm_msd": loss_fm_msd,
+        "g_loss_gen_mpd": loss_gen_mpd,
+        "g_loss_gen_msd": loss_gen_msd,
+        "g_loss": loss_g,
+        "d_loss_mpd": loss_disc_mpd,
+        "d_loss_msd": loss_disc_msd,
+        "d_loss": loss_d,
+        "global_step": self.global_step,
+        "lr": optim_g.param_groups[0]['lr'],
+    }
+    self.log_dict(metrics, on_step=True, sync_dist=True)
+    self.log("g_l1_loss", loss_mel, prog_bar=True, logger=False, sync_dist=True)
+
+def _patched_validation_step(self, batch, batch_idx):
+    audio, audio_len, audio_mel, audio_mel_len = self._process_batch(batch)
+    audio_pred = self(spec=audio_mel)
+    # Truncate to matching length
+    min_audio_len = min(audio.shape[1], audio_pred.shape[2])
+    audio_trimmed = audio[:, :min_audio_len]
+    audio_pred_trimmed = audio_pred[:, :, :min_audio_len]
+    audio_pred_mel, _ = self.audio_to_melspec_precessor(audio_pred_trimmed.squeeze(1), audio_len)
+    # Truncate mels to handle off-by-one frame counts
+    min_len = min(audio_mel.shape[2], audio_pred_mel.shape[2])
+    loss_mel = F.l1_loss(audio_mel[:, :, :min_len], audio_pred_mel[:, :, :min_len])
+    self.log_dict({"val_loss": loss_mel}, on_epoch=True, sync_dist=True)
+
+# Apply patches before model instantiation
+def _apply_validation_patch():
+    from nemo.collections.tts.models import HifiGanModel
+    HifiGanModel.training_step = _patched_training_step
+    HifiGanModel.validation_step = _patched_validation_step
+
 # ── Project paths ─────────────────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_DIR / "configs" / "training" / "hifigan_shona.yaml"
@@ -93,8 +180,11 @@ def main():
     print("\n⏳ Loading config and model...")
     from omegaconf import OmegaConf
     import lightning.pytorch as pl
-    from nemo.collections.tts.models import HifiGanModel
     from nemo.utils.exp_manager import exp_manager
+
+    # Apply validation_step fix before importing HifiGanModel
+    _apply_validation_patch()
+    from nemo.collections.tts.models import HifiGanModel
 
     cfg = OmegaConf.load(str(CONFIG_PATH))
 
@@ -119,6 +209,14 @@ def main():
         # Override config with our Shona config for dataset setup
         # Keep generator weights but update dataset and training params
         model._cfg = cfg.model
+
+        # Critical: update ds_class so _process_batch handles VocoderDataset
+        # dict batches correctly (pretrained model defaults to MelAudioDataset)
+        model.ds_class = cfg.model.train_ds.dataset._target_
+
+        # Assign trainer before setup_training_data (needs trainer.world_size)
+        model.set_trainer(trainer)
+
         model.setup_training_data(cfg.model.train_ds)
         model.setup_validation_data(cfg.model.validation_ds)
         print(f"  ✅ Dataset config updated for Shona")

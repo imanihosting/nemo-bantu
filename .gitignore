@@ -17,8 +17,14 @@ models/*.ckpt
 
 # Runtime training artifacts (auto-generated each run)
 logs/inner_train_*.sh
+logs/inner_hifigan_*.sh
 logs/watchdog_*.sh
 logs/training_status.txt
+logs/hifigan_status.txt
+logs/tts_api.log
 
 # HF cache
 .cache/
+
+# Editor/AI tooling
+.claude/
