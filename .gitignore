@@ -12,6 +12,7 @@ ssh-remote.md
 data/raw/
 data/processed/
 data/manifests/
+data/fastpitch_mels/
 models/*.nemo
 models/*.ckpt
 
@@ -21,6 +22,7 @@ logs/inner_hifigan_*.sh
 logs/watchdog_*.sh
 logs/training_status.txt
 logs/hifigan_status.txt
+logs/hifigan_phase2_status.txt
 logs/tts_api.log
 
 # HF cache
